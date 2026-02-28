@@ -95,6 +95,7 @@ const RAW_RUNS = Array.isArray(window.FCV_SCHEDULE_RUNS) ? window.FCV_SCHEDULE_R
 let selectedMode = "arriveBy";
 let countdownInterval = null;
 let timezoneClockInterval = null;
+let expandedScheduleRunKey = null;
 
 const modeArriveButton = document.getElementById("mode-arrive");
 const modeLeaveButton = document.getElementById("mode-leave");
@@ -444,37 +445,32 @@ function itineraryTimingMessage(itinerary, targetDate, mode) {
   return { text: `Arrives ${diff} min after target`, level: "warning" };
 }
 
-function summarizeViaStops(path) {
-  const middle = path.slice(1, -1).map((node) => stopLabel(node.stopId));
-  if (middle.length === 0) {
-    return "";
-  }
-  if (middle.length <= 2) {
-    return `via ${middle.join(" • ")}`;
-  }
-  return `via ${middle.slice(0, 2).join(" • ")} +${middle.length - 2} more`;
-}
-
-function fullPathWithTimes(path) {
-  return path
-    .map((node) => `${stopLabel(node.stopId)} ${formatTime(node.date)}`)
-    .join(" → ");
+function renderStopList(path, listClassName) {
+  return `
+    <ol class="${listClassName}">
+      ${path.map((node) => `
+        <li class="stop-list-item">
+          <span class="stop-list-time">${formatTime(node.date)}</span>
+          <span class="stop-list-name">${stopLabel(node.stopId)}</span>
+        </li>
+      `).join("")}
+    </ol>
+  `;
 }
 
 function renderLeg(leg, index) {
-  const viaSummary = summarizeViaStops(leg.path);
   return `
     <div class="leg-row">
-      <strong>Leg ${index + 1}:</strong>
-      Route ${leg.routeCode} (${leg.tripCode}) ·
-      ${stopLabel(leg.from)} ${formatTime(leg.departure)} → ${stopLabel(leg.to)} ${formatTime(leg.arrival)}
-      ${viaSummary ? `<br><span class="leg-via">${viaSummary}</span>` : ""}
-      <br><span class="leg-via">${fullPathWithTimes(leg.path)}</span>
+      <div class="leg-title">
+        <strong>Leg ${index + 1}:</strong>
+        Route ${leg.routeCode} (${leg.tripCode})
+      </div>
+      ${renderStopList(leg.path, "leg-stop-list")}
     </div>
   `;
 }
 
-function renderItineraryCard(itinerary, title, mode, targetDate, isBest) {
+function renderItineraryCard(itinerary, title, mode, targetDate) {
   const timing = itineraryTimingMessage(itinerary, targetDate, mode);
   const totalMinutes = minutesBetween(itinerary.departure, itinerary.arrival);
   const routeCodes = [...new Set(itinerary.legs.map((leg) => leg.routeCode))];
@@ -498,7 +494,7 @@ function renderItineraryCard(itinerary, title, mode, targetDate, isBest) {
         <div class="value">${transferText}</div>
       </div>
       <div class="timing ${timing.level}">${timing.text}</div>
-      ${isBest ? `<div class="legs">${itinerary.legs.map((leg, idx) => renderLeg(leg, idx)).join("")}</div>` : ""}
+      <div class="legs">${itinerary.legs.map((leg, idx) => renderLeg(leg, idx)).join("")}</div>
     </article>
   `;
 }
@@ -547,14 +543,14 @@ function renderResults(plan, targetDate) {
     html += `<div class="result-card"><p class="advisory">${plan.advisory}</p></div>`;
   }
 
-  html += renderItineraryCard(plan.best, "Best Option", selectedMode, targetDate, true);
+  html += renderItineraryCard(plan.best, "Best Option", selectedMode, targetDate);
   if (selectedMode === "leaveAt") {
     html += `<div class="result-card"><div id="liveCountdown" class="timing good"></div></div>`;
   }
 
   if (plan.alternatives.length > 0) {
     plan.alternatives.forEach((alt, index) => {
-      html += renderItineraryCard(alt, `Alternative ${index + 1}`, selectedMode, targetDate, false);
+      html += renderItineraryCard(alt, `Alternative ${index + 1}`, selectedMode, targetDate);
     });
   }
 
@@ -685,6 +681,10 @@ function populateRouteScheduleOptions() {
   routeScheduleSelect.value = "C";
 }
 
+function makeRunKey(run, index) {
+  return `${run.routeCode}-${run.tripCode}-${run.stops[0].time}-${index}`;
+}
+
 function renderRouteSchedule() {
   const routeCode = routeScheduleSelect.value;
   const now = getPlannerNow();
@@ -708,18 +708,28 @@ function renderRouteSchedule() {
     return;
   }
 
-  routeScheduleList.innerHTML = dayRows.map((run) => {
+  routeScheduleList.innerHTML = dayRows.map((run, index) => {
     const first = run.stops[0];
     const last = run.stops[run.stops.length - 1];
-    const path = run.stops
-      .map((stop) => `<span class="schedule-stop"><strong>${formatClockFromMinutes(stop.minutes)}</strong> ${stopLabel(stop.stopId)}</span>`)
-      .join(`<span class="schedule-arrow">→</span>`);
+    const runKey = makeRunKey(run, index);
+    const expanded = expandedScheduleRunKey === runKey;
 
     return `
-      <div class="schedule-row">
-        <div class="schedule-time">${formatClockFromMinutes(first.minutes)} → ${formatClockFromMinutes(last.minutes)}</div>
-        <div class="schedule-main">Trip ${run.tripCode}</div>
-        <div class="schedule-sub">${path}</div>
+      <div class="schedule-row ${expanded ? "expanded" : ""}">
+        <button class="schedule-summary" type="button" data-run-key="${runKey}" aria-expanded="${expanded ? "true" : "false"}">
+          <span class="schedule-time">${formatClockFromMinutes(first.minutes)} → ${formatClockFromMinutes(last.minutes)}</span>
+          <span class="schedule-main">Trip ${run.tripCode}</span>
+          <span class="schedule-chevron">${expanded ? "▾" : "▸"}</span>
+        </button>
+        <div class="schedule-sub">
+          ${renderStopList(
+            run.stops.map((stop) => ({
+              stopId: stop.stopId,
+              date: new Date(Date.UTC(2000, 0, 1, Math.floor(stop.minutes / 60), stop.minutes % 60))
+            })),
+            "schedule-stop-list"
+          )}
+        </div>
       </div>
     `;
   }).join("");
@@ -770,7 +780,19 @@ function attachEvents() {
   destinationSelect.addEventListener("change", runPlanner);
   timeInput.addEventListener("change", runPlanner);
   searchButton.addEventListener("click", runPlanner);
-  routeScheduleSelect.addEventListener("change", renderRouteSchedule);
+  routeScheduleSelect.addEventListener("change", () => {
+    expandedScheduleRunKey = null;
+    renderRouteSchedule();
+  });
+  routeScheduleList.addEventListener("click", (event) => {
+    const trigger = event.target.closest(".schedule-summary");
+    if (!trigger) {
+      return;
+    }
+    const runKey = trigger.dataset.runKey;
+    expandedScheduleRunKey = expandedScheduleRunKey === runKey ? null : runKey;
+    renderRouteSchedule();
+  });
 
   document.querySelectorAll(".quick-btn").forEach((button) => {
     button.addEventListener("click", () => handleQuickAction(button.dataset.quick));
