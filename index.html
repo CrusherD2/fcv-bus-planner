@@ -37,17 +37,11 @@
         <select id="destinationSelect"></select>
       </label>
 
-      <div class="time-grid">
-        <label class="field">
-          <span>Date</span>
-          <input id="dateInput" type="date">
-        </label>
-
-        <label class="field">
-          <span id="timeLabel">Need to arrive by</span>
-          <input id="timeInput" type="time">
-        </label>
-      </div>
+      <label class="field centered-time-field">
+        <span id="timeLabel">Need to arrive by</span>
+        <input id="timeInput" type="time">
+      </label>
+      <p id="timezoneClock" class="timezone-clock"></p>
 
       <div class="quick-row">
         <button class="quick-btn" type="button" data-quick="now">Now</button>
@@ -61,11 +55,24 @@
 
     <section id="resultSection" class="results" aria-live="polite"></section>
 
+    <section class="glass-card route-schedule-card">
+      <div class="route-schedule-header">
+        <h2>View a route schedule</h2>
+        <label class="field route-field">
+          <span>Route</span>
+          <select id="routeScheduleSelect"></select>
+        </label>
+      </div>
+      <p id="routeScheduleMeta" class="route-schedule-meta"></p>
+      <div id="routeScheduleList" class="route-schedule-list"></div>
+    </section>
+
     <section class="glass-card notes-card">
       <h2>Notes</h2>
       <ul>
         <li>Built for mobile web, so you can use it directly online on your phone.</li>
         <li>Schedules are based on your uploaded Flamingo Buses PDF.</li>
+        <li>Planner calculations use Winter Garden time (America/New_York).</li>
         <li>Route A weekday rules are included (Mon-Tue vs Wed-Sun).</li>
         <li>Published times are approximate and may vary by about 5 minutes.</li>
       </ul>

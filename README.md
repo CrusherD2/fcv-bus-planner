@@ -7,16 +7,20 @@ This is a **mobile-first web app** for Flamingo Crossings bus planning, designed
 - Ask-like flow:
   - Where are you now?
   - Where are you going?
-  - What time do you need to arrive or leave?
+  - What time do you need to arrive or leave (time only, no date picker)?
 - Travel modes:
   - **Arrive By**
   - **Leave At**
+- Time handling:
+  - Uses **Winter Garden timezone** (`America/New_York`) for all planning and "current time"
 - Planner output:
   - Best route option
   - Route badge(s), departure, arrival, trip time
   - Transfer details (if needed)
   - Alternative options
   - Live countdown in Leave At mode
+- Route browser:
+  - Pick a specific route (A/B/C/D/E/G/H/I/J/K) and view today's full schedule neatly
 - Quick actions:
   - Now
   - +30 min

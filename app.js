@@ -46,23 +46,30 @@ const STOP_ORDER = [
 const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
 const MON_TUE = [1, 2];
 const WED_SUN = [0, 3, 4, 5, 6];
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MIN_TRANSFER_MINUTES = 3;
 const MAX_LAYOVER_MINUTES = 120;
 const MAX_TOTAL_MINUTES = 280;
 const MINUTES_PER_DAY = 1440;
+const PLANNER_TIMEZONE = "America/New_York";
+const PAST_SELECTION_GRACE_MINUTES = 2;
 
 let selectedMode = "arriveBy";
 let countdownInterval = null;
+let timezoneClockInterval = null;
 
 const modeArriveButton = document.getElementById("mode-arrive");
 const modeLeaveButton = document.getElementById("mode-leave");
 const originSelect = document.getElementById("originSelect");
 const destinationSelect = document.getElementById("destinationSelect");
-const dateInput = document.getElementById("dateInput");
 const timeInput = document.getElementById("timeInput");
 const timeLabel = document.getElementById("timeLabel");
+const timezoneClock = document.getElementById("timezoneClock");
 const searchButton = document.getElementById("searchButton");
 const resultSection = document.getElementById("resultSection");
+const routeScheduleSelect = document.getElementById("routeScheduleSelect");
+const routeScheduleMeta = document.getElementById("routeScheduleMeta");
+const routeScheduleList = document.getElementById("routeScheduleList");
 
 const SCHEDULE_TRIPS = buildScheduleTrips();
 
@@ -77,6 +84,52 @@ function clockOffset(clock, minuteOffset) {
   const h = Math.floor(wrapped / 60);
   const m = wrapped % 60;
   return `${h}:${String(m).padStart(2, "0")}`;
+}
+
+function getPlannerTimeParts(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: PLANNER_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  });
+
+  const parts = formatter.formatToParts(date);
+  const map = {};
+  parts.forEach((part) => {
+    if (part.type !== "literal") {
+      map[part.type] = Number(part.value);
+    }
+  });
+
+  return {
+    year: map.year,
+    month: map.month,
+    day: map.day,
+    hour: map.hour,
+    minute: map.minute,
+    second: map.second
+  };
+}
+
+function plannerDateFromParts(parts) {
+  return new Date(Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour ?? 0,
+    parts.minute ?? 0,
+    parts.second ?? 0,
+    0
+  ));
+}
+
+function getPlannerNow() {
+  return plannerDateFromParts(getPlannerTimeParts());
 }
 
 function makeTrip(routeCode, tripCode, from, to, departureClock, arrivalClock, serviceDays = EVERY_DAY) {
@@ -365,7 +418,7 @@ function addMinutes(date, minutes) {
 
 function startOfDay(date) {
   const day = new Date(date);
-  day.setHours(0, 0, 0, 0);
+  day.setUTCHours(0, 0, 0, 0);
   return day;
 }
 
@@ -385,7 +438,7 @@ function expandTripInstances(targetDate) {
 
   for (let dayOffset = -1; dayOffset <= 2; dayOffset += 1) {
     const serviceDate = addDays(dayStart, dayOffset);
-    const weekday = serviceDate.getDay();
+    const weekday = serviceDate.getUTCDay();
     for (const trip of SCHEDULE_TRIPS) {
       if (!trip.serviceDays.includes(weekday)) {
         continue;
@@ -519,12 +572,21 @@ function selectPlan(itineraries, targetDate, mode) {
   };
 }
 
+function formatClockFromMinutes(totalMinutes) {
+  const wrapped = ((totalMinutes % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+  const hour24 = Math.floor(wrapped / 60);
+  const minute = wrapped % 60;
+  const suffix = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = ((hour24 + 11) % 12) + 1;
+  return `${hour12}:${String(minute).padStart(2, "0")} ${suffix}`;
+}
+
 function formatTime(date) {
-  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return formatClockFromMinutes((date.getUTCHours() * 60) + date.getUTCMinutes());
 }
 
 function formatDay(date) {
-  return date.toLocaleDateString([], { weekday: "short" });
+  return WEEKDAY_LABELS[date.getUTCDay()];
 }
 
 function formatStop(stopKey) {
@@ -599,14 +661,14 @@ function clearCountdownTimer() {
   }
 }
 
-function startCountdownForBest(bestItinerary, targetDate) {
+function startCountdownForBest(bestItinerary) {
   clearCountdownTimer();
   if (!bestItinerary || selectedMode !== "leaveAt") {
     return;
   }
 
   const update = () => {
-    const now = new Date();
+    const now = getPlannerNow();
     const remaining = minutesBetween(now, bestItinerary.departure);
     const el = document.getElementById("liveCountdown");
     if (!el) {
@@ -649,36 +711,54 @@ function renderResults(plan, targetDate) {
   }
 
   resultSection.innerHTML = html;
-  startCountdownForBest(plan.best, targetDate);
+  startCountdownForBest(plan.best);
 }
 
 function parseTargetDateTime() {
-  const dateValue = dateInput.value;
   const timeValue = timeInput.value;
-  if (!dateValue || !timeValue) {
+  if (!timeValue) {
     return null;
   }
-  const [year, month, day] = dateValue.split("-").map(Number);
-  const [hour, minute] = timeValue.split(":").map(Number);
-  return new Date(year, month - 1, day, hour, minute, 0, 0);
-}
 
-function formatDateInput(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  const [hour, minute] = timeValue.split(":").map(Number);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) {
+    return null;
+  }
+
+  const now = getPlannerNow();
+  let target = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    hour,
+    minute,
+    0,
+    0
+  ));
+
+  if (target < addMinutes(now, -PAST_SELECTION_GRACE_MINUTES)) {
+    target = addDays(target, 1);
+  }
+
+  return target;
 }
 
 function formatTimeInput(date) {
-  const h = String(date.getHours()).padStart(2, "0");
-  const m = String(date.getMinutes()).padStart(2, "0");
+  const h = String(date.getUTCHours()).padStart(2, "0");
+  const m = String(date.getUTCMinutes()).padStart(2, "0");
   return `${h}:${m}`;
 }
 
-function setTargetDateTime(date) {
-  dateInput.value = formatDateInput(date);
+function setTargetTime(date) {
   timeInput.value = formatTimeInput(date);
+}
+
+function updateTimezoneClock() {
+  if (!timezoneClock) {
+    return;
+  }
+  const now = getPlannerNow();
+  timezoneClock.textContent = `Current Winter Garden time: ${formatDay(now)} ${formatTime(now)} (ET)`;
 }
 
 function setMode(mode) {
@@ -704,7 +784,7 @@ function runPlanner() {
 
   const targetDate = parseTargetDateTime();
   if (!targetDate || Number.isNaN(targetDate.getTime())) {
-    resultSection.innerHTML = `<div class="empty">Choose a valid date and time.</div>`;
+    resultSection.innerHTML = `<div class="empty">Choose a valid time.</div>`;
     clearCountdownTimer();
     return;
   }
@@ -737,22 +817,80 @@ function populateDestinationOptions() {
   }
 }
 
+function routeCodes() {
+  return [...new Set(SCHEDULE_TRIPS.map((trip) => trip.routeCode))].sort();
+}
+
+function populateRouteScheduleOptions() {
+  if (!routeScheduleSelect) {
+    return;
+  }
+  const options = routeCodes()
+    .map((code) => `<option value="${code}">Route ${code}</option>`)
+    .join("");
+  routeScheduleSelect.innerHTML = options;
+  routeScheduleSelect.value = "C";
+}
+
+function renderRouteSchedule() {
+  if (!routeScheduleSelect || !routeScheduleList || !routeScheduleMeta) {
+    return;
+  }
+
+  const selectedRoute = routeScheduleSelect.value;
+  const plannerNow = getPlannerNow();
+  const weekday = plannerNow.getUTCDay();
+  const weekdayLabel = WEEKDAY_LABELS[weekday];
+
+  const tripsToday = SCHEDULE_TRIPS
+    .filter((trip) => trip.routeCode === selectedRoute && trip.serviceDays.includes(weekday))
+    .sort((a, b) => {
+      if (a.departureMinutes !== b.departureMinutes) {
+        return a.departureMinutes - b.departureMinutes;
+      }
+      if (a.from !== b.from) {
+        return a.from.localeCompare(b.from);
+      }
+      return a.to.localeCompare(b.to);
+    });
+
+  routeScheduleMeta.textContent = `Showing Route ${selectedRoute} for ${weekdayLabel} in Winter Garden time (ET).`;
+
+  if (tripsToday.length === 0) {
+    routeScheduleList.innerHTML = `<div class="empty">No trips for Route ${selectedRoute} today.</div>`;
+    return;
+  }
+
+  routeScheduleList.innerHTML = tripsToday.map((trip) => {
+    const departureTime = formatClockFromMinutes(trip.departureMinutes);
+    const arrivalTime = formatClockFromMinutes(trip.arrivalMinutes);
+    const overnightSuffix = trip.arrivalMinutes >= MINUTES_PER_DAY ? " (+1d)" : "";
+    return `
+      <div class="schedule-row">
+        <div class="schedule-time">${departureTime}</div>
+        <div class="schedule-main">${formatStop(trip.from)} → ${formatStop(trip.to)}</div>
+        <div class="schedule-sub">Trip ${trip.tripCode} · Arrives ${arrivalTime}${overnightSuffix}</div>
+      </div>
+    `;
+  }).join("");
+}
+
 function handleQuickAction(value) {
-  const now = new Date();
+  const now = getPlannerNow();
   if (value === "now") {
     setMode("leaveAt");
-    setTargetDateTime(now);
+    setTargetTime(now);
     runPlanner();
     return;
   }
 
   if (value === "tonight") {
     const tonight = new Date(now);
-    tonight.setHours(22, 0, 0, 0);
+    tonight.setUTCHours(22, 0, 0, 0);
     if (tonight < now) {
-      tonight.setDate(tonight.getDate() + 1);
+      tonight.setUTCDate(tonight.getUTCDate() + 1);
     }
-    setTargetDateTime(tonight);
+    setTargetTime(tonight);
     runPlanner();
     return;
   }
@@ -761,7 +899,7 @@ function handleQuickAction(value) {
   if (!Number.isNaN(addMinutesValue)) {
     setMode("leaveAt");
     const shifted = addMinutes(now, addMinutesValue);
-    setTargetDateTime(shifted);
+    setTargetTime(shifted);
     runPlanner();
   }
 }
@@ -780,9 +918,11 @@ function attachEvents() {
     runPlanner();
   });
   destinationSelect.addEventListener("change", runPlanner);
-  dateInput.addEventListener("change", runPlanner);
   timeInput.addEventListener("change", runPlanner);
   searchButton.addEventListener("click", runPlanner);
+  if (routeScheduleSelect) {
+    routeScheduleSelect.addEventListener("change", renderRouteSchedule);
+  }
 
   document.querySelectorAll(".quick-btn").forEach((button) => {
     button.addEventListener("click", () => handleQuickAction(button.dataset.quick));
@@ -794,10 +934,21 @@ function initialize() {
   originSelect.value = "fcvEast";
   populateDestinationOptions();
   destinationSelect.value = "epcot";
+  populateRouteScheduleOptions();
   setMode("arriveBy");
-  setTargetDateTime(new Date());
+  setTargetTime(getPlannerNow());
+  updateTimezoneClock();
+  renderRouteSchedule();
   attachEvents();
   runPlanner();
+
+  if (timezoneClockInterval) {
+    clearInterval(timezoneClockInterval);
+  }
+  timezoneClockInterval = setInterval(() => {
+    updateTimezoneClock();
+    renderRouteSchedule();
+  }, 30000);
 }
 
 if ("serviceWorker" in navigator) {
