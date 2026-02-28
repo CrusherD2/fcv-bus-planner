@@ -23,6 +23,7 @@ This is a **mobile-first web app** for Flamingo Crossings bus planning, designed
   - Routes are modeled as **left-to-right multi-stop chains** from each schedule row
   - Example: Route B rows include FCV East → FCV West → Hollywood Studios → ESPN → Blizzard Beach → Coronado Springs → FCV East
   - Example: Route E distinguishes Magic Kingdom West Clock and TTC columns
+  - Route D includes intermediate Animal Kingdom-area stops (Costuming, Lodge, Park Cast Services)
 - Route browser:
   - Pick a specific route (A/B/C/D/E/G/H/I/J/K) and view today's full schedule neatly
 - Quick actions:

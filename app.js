@@ -27,10 +27,10 @@ const STOP_META = {
 
   epcot: { label: "EPCOT", icon: "🌐" },
 
-  animalKingdom: { label: "Animal Kingdom", icon: "🦁" },
-  animalKingdomCostuming: { label: "Animal Kingdom Costuming", icon: "🧵" },
-  animalKingdomLodge: { label: "Animal Kingdom Lodge", icon: "🏨" },
-  animalKingdomParkCastServices: { label: "Animal Kingdom Park Cast Services", icon: "🚌" },
+  animalKingdom: { label: "Animal Kingdom (Park Cast Services)", icon: "🦁" },
+  animalKingdomCostuming: { label: "Animal Kingdom Costuming (Cast Entrance)", icon: "🧵" },
+  animalKingdomLodge: { label: "Animal Kingdom Lodge (Cast Parking)", icon: "🏨" },
+  allStarResortsCastServices: { label: "All-Star Resorts (Cast Services)", icon: "🚌" },
   allStarSports: { label: "All-Star Sports", icon: "🏈" },
   allStarMusic: { label: "All-Star Music", icon: "🎵" },
   allStarMovies: { label: "All-Star Movies", icon: "🎞️" },
@@ -71,7 +71,7 @@ const PREFERRED_STOP_ORDER = [
   "superTarget", "target", "walmart", "castConnection",
   "hollywoodStudios", "espnWideWorld", "blizzardBeach", "coronadoSprings",
   "epcot",
-  "animalKingdom", "animalKingdomCostuming", "animalKingdomLodge", "animalKingdomParkCastServices",
+  "animalKingdomCostuming", "animalKingdomLodge", "animalKingdom", "allStarResortsCastServices",
   "allStarSports", "allStarMusic", "allStarMovies",
   "magicKingdomWestClock", "magicKingdomTTC",
   "typhoonLagoonCastServices", "typhoonLagoonGuestEntrance", "caribbeanBeachOldPortRoyale",
@@ -455,6 +455,12 @@ function summarizeViaStops(path) {
   return `via ${middle.slice(0, 2).join(" • ")} +${middle.length - 2} more`;
 }
 
+function fullPathWithTimes(path) {
+  return path
+    .map((node) => `${stopLabel(node.stopId)} ${formatTime(node.date)}`)
+    .join(" → ");
+}
+
 function renderLeg(leg, index) {
   const viaSummary = summarizeViaStops(leg.path);
   return `
@@ -463,6 +469,7 @@ function renderLeg(leg, index) {
       Route ${leg.routeCode} (${leg.tripCode}) ·
       ${stopLabel(leg.from)} ${formatTime(leg.departure)} → ${stopLabel(leg.to)} ${formatTime(leg.arrival)}
       ${viaSummary ? `<br><span class="leg-via">${viaSummary}</span>` : ""}
+      <br><span class="leg-via">${fullPathWithTimes(leg.path)}</span>
     </div>
   `;
 }
