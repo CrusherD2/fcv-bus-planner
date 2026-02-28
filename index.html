@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FCV Bus Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body {
+    margin:0;
+    font-family: 'Fredoka', sans-serif;
+    background: linear-gradient(135deg,#1c1c2e,#2b2b52);
+    color:white;
+    text-align:center;
+}
+header {
+    padding:20px;
+    font-size:28px;
+    font-weight:600;
+    background: linear-gradient(90deg,#ff6ec7,#ffd700);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+}
+.card {
+    background:#2e2e4d;
+    margin:20px;
+    padding:20px;
+    border-radius:20px;
+    box-shadow:0 0 20px rgba(255,215,0,0.3);
+}
+select, input, button {
+    width:90%;
+    padding:12px;
+    margin:10px 0;
+    border-radius:12px;
+    border:none;
+    font-size:16px;
+}
+button {
+    background:#ffd700;
+    font-weight:600;
+}
+.result {
+    margin-top:20px;
+    font-size:18px;
+}
+.countdown {
+    font-size:32px;
+    margin-top:10px;
+    color:#ffd700;
+}
+.route-badge {
+    padding:8px 16px;
+    border-radius:12px;
+    font-weight:600;
+    display:inline-block;
+    margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<header>✨ FCV Bus Planner ✨</header>
+
+<div class="card">
+<select id="mode">
+<option value="arrive">Arrive By</option>
+<option value="leave">Leave Now</option>
+</select>
+
+<select id="start">
+<option value="East">FCV East</option>
+<option value="West">FCV West</option>
+</select>
+
+<select id="destination">
+<option value="EPCOT">EPCOT (Route C)</option>
+<option value="Hollywood">Hollywood Studios (Route B)</option>
+<option value="Magic">Magic Kingdom (Route E)</option>
+<option value="Springs">Disney Springs (Route I)</option>
+</select>
+
+<input type="time" id="arrivalTime">
+
+<button onclick="calculate()">Find My Bus</button>
+
+<div class="result" id="result"></div>
+<div class="countdown" id="countdown"></div>
+</div>
+
+<script>
+
+// simplified demo schedule
+const routes = {
+"EPCOT": {route:"C", depart:"15:00", arrive:"15:43", color:"#9b59b6"},
+"Hollywood": {route:"B", depart:"14:27", arrive:"15:26", color:"#3498db"},
+"Magic": {route:"E", depart:"14:20", arrive:"15:08", color:"#e74c3c"},
+"Springs": {route:"I", depart:"15:00", arrive:"16:06", color:"#ff69b4"}
+};
+
+function calculate() {
+    const dest = document.getElementById("destination").value;
+    const mode = document.getElementById("mode").value;
+    const data = routes[dest];
+
+    let resultDiv = document.getElementById("result");
+    let countdownDiv = document.getElementById("countdown");
+
+    resultDiv.innerHTML = `
+        <div class="route-badge" style="background:${data.color}">
+        Route ${data.route}
+        </div>
+        <p>Departure: ${data.depart}</p>
+        <p>Arrival: ${data.arrive}</p>
+    `;
+
+    if(mode === "leave"){
+        startCountdown(data.depart);
+    } else {
+        countdownDiv.innerHTML="";
+    }
+}
+
+function startCountdown(timeStr){
+    let now = new Date();
+    let target = new Date();
+    let [h,m] = timeStr.split(":");
+    target.setHours(h,m,0,0);
+
+    function update(){
+        let diff = target - new Date();
+        if(diff <= 0){
+            document.getElementById("countdown").innerHTML="Leave Now!";
+            return;
+        }
+        let minutes = Math.floor(diff/60000);
+        let seconds = Math.floor((diff%60000)/1000);
+        document.getElementById("countdown").innerHTML =
+        `${minutes}m ${seconds}s`;
+    }
+
+    update();
+    setInterval(update,1000);
+}
+
+</script>
+
+</body>
+</html>
