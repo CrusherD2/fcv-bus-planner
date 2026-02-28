@@ -1,4 +1,4 @@
-const CACHE_NAME = "fcv-bus-planner-v1";
+const CACHE_NAME = "fcv-bus-planner-v2";
 const ASSETS = [
   "./",
   "./index.html",
