@@ -1,149 +1,86 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FCV Bus Planner</title>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
-<style>
-body {
-    margin:0;
-    font-family: 'Fredoka', sans-serif;
-    background: linear-gradient(135deg,#1c1c2e,#2b2b52);
-    color:white;
-    text-align:center;
-}
-header {
-    padding:20px;
-    font-size:28px;
-    font-weight:600;
-    background: linear-gradient(90deg,#ff6ec7,#ffd700);
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-}
-.card {
-    background:#2e2e4d;
-    margin:20px;
-    padding:20px;
-    border-radius:20px;
-    box-shadow:0 0 20px rgba(255,215,0,0.3);
-}
-select, input, button {
-    width:90%;
-    padding:12px;
-    margin:10px 0;
-    border-radius:12px;
-    border:none;
-    font-size:16px;
-}
-button {
-    background:#ffd700;
-    font-weight:600;
-}
-.result {
-    margin-top:20px;
-    font-size:18px;
-}
-.countdown {
-    font-size:32px;
-    margin-top:10px;
-    color:#ffd700;
-}
-.route-badge {
-    padding:8px 16px;
-    border-radius:12px;
-    font-weight:600;
-    display:inline-block;
-    margin-top:10px;
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#111530">
+  <title>FCV Bus Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+  <main class="app-shell">
+    <section class="glass-card hero">
+      <p class="chip">Online bus planner</p>
+      <h1>FCV Bus Planner</h1>
+      <p class="hero-subtitle">
+        Tell me where you are, where you need to go, and when you need to arrive.
+      </p>
+    </section>
 
-<header>✨ FCV Bus Planner ✨</header>
+    <section class="glass-card form-card">
+      <div class="segmented" role="tablist" aria-label="Travel mode">
+        <button id="mode-arrive" class="segmented-btn active" data-mode="arriveBy" type="button">Arrive By</button>
+        <button id="mode-leave" class="segmented-btn" data-mode="leaveAt" type="button">Leave At</button>
+      </div>
 
-<div class="card">
-<select id="mode">
-<option value="arrive">Arrive By</option>
-<option value="leave">Leave Now</option>
-</select>
+      <label class="field">
+        <span>Where are you now?</span>
+        <select id="originSelect"></select>
+      </label>
 
-<select id="start">
-<option value="East">FCV East</option>
-<option value="West">FCV West</option>
-</select>
+      <label class="field">
+        <span>Where are you going?</span>
+        <select id="destinationSelect"></select>
+      </label>
 
-<select id="destination">
-<option value="EPCOT">EPCOT (Route C)</option>
-<option value="Hollywood">Hollywood Studios (Route B)</option>
-<option value="Magic">Magic Kingdom (Route E)</option>
-<option value="Springs">Disney Springs (Route I)</option>
-</select>
+      <label class="field centered-time-field">
+        <span id="timeLabel">Need to arrive by</span>
+        <input id="timeInput" type="time">
+      </label>
+      <p id="timezoneClock" class="timezone-clock"></p>
 
-<input type="time" id="arrivalTime">
+      <div class="quick-row">
+        <button class="quick-btn" type="button" data-quick="now">Now</button>
+        <button class="quick-btn" type="button" data-quick="+30">+30 min</button>
+        <button class="quick-btn" type="button" data-quick="+60">+1 hr</button>
+        <button class="quick-btn" type="button" data-quick="tonight">Tonight 10 PM</button>
+      </div>
 
-<button onclick="calculate()">Find My Bus</button>
+      <button id="searchButton" class="primary-btn" type="button">Find My Best Route</button>
+    </section>
 
-<div class="result" id="result"></div>
-<div class="countdown" id="countdown"></div>
-</div>
+    <section id="resultSection" class="results" aria-live="polite"></section>
 
-<script>
+    <section class="glass-card route-schedule-card">
+      <div class="route-schedule-header">
+        <h2>View a route schedule</h2>
+        <label class="field route-field">
+          <span>Route</span>
+          <select id="routeScheduleSelect"></select>
+        </label>
+      </div>
+      <p id="routeScheduleMeta" class="route-schedule-meta"></p>
+      <div id="routeScheduleList" class="route-schedule-list"></div>
+    </section>
 
-// simplified demo schedule
-const routes = {
-"EPCOT": {route:"C", depart:"15:00", arrive:"15:43", color:"#9b59b6"},
-"Hollywood": {route:"B", depart:"14:27", arrive:"15:26", color:"#3498db"},
-"Magic": {route:"E", depart:"14:20", arrive:"15:08", color:"#e74c3c"},
-"Springs": {route:"I", depart:"15:00", arrive:"16:06", color:"#ff69b4"}
-};
+    <section class="glass-card notes-card">
+      <h2>Notes</h2>
+      <ul>
+        <li>Built for mobile web, so you can use it directly online on your phone.</li>
+        <li>Schedules are based on your uploaded Flamingo Buses PDF.</li>
+        <li>Routes are read left-to-right per row, including intermediate stops.</li>
+        <li>Planner calculations use Winter Garden time (America/New_York).</li>
+        <li>Route A weekday rules are included (Mon-Tue vs Wed-Sun).</li>
+        <li>Published times are approximate and may vary by about 5 minutes.</li>
+      </ul>
+    </section>
+  </main>
 
-function calculate() {
-    const dest = document.getElementById("destination").value;
-    const mode = document.getElementById("mode").value;
-    const data = routes[dest];
-
-    let resultDiv = document.getElementById("result");
-    let countdownDiv = document.getElementById("countdown");
-
-    resultDiv.innerHTML = `
-        <div class="route-badge" style="background:${data.color}">
-        Route ${data.route}
-        </div>
-        <p>Departure: ${data.depart}</p>
-        <p>Arrival: ${data.arrive}</p>
-    `;
-
-    if(mode === "leave"){
-        startCountdown(data.depart);
-    } else {
-        countdownDiv.innerHTML="";
-    }
-}
-
-function startCountdown(timeStr){
-    let now = new Date();
-    let target = new Date();
-    let [h,m] = timeStr.split(":");
-    target.setHours(h,m,0,0);
-
-    function update(){
-        let diff = target - new Date();
-        if(diff <= 0){
-            document.getElementById("countdown").innerHTML="Leave Now!";
-            return;
-        }
-        let minutes = Math.floor(diff/60000);
-        let seconds = Math.floor((diff%60000)/1000);
-        document.getElementById("countdown").innerHTML =
-        `${minutes}m ${seconds}s`;
-    }
-
-    update();
-    setInterval(update,1000);
-}
-
-</script>
-
+  <script src="./schedule-data.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>

@@ -1,0 +1,9 @@
+{
+  "name": "FCV Bus Planner",
+  "short_name": "FCV Bus",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b112a",
+  "theme_color": "#111530",
+  "description": "Mobile web app to plan Flamingo Crossings bus routes by origin, destination, and target time."
+}
