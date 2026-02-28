@@ -267,6 +267,10 @@ input[type="time"] {
   font-size: 13px;
 }
 
+.leg-via {
+  color: var(--text-soft);
+}
+
 .timing.good {
   color: var(--success);
   font-weight: 700;
@@ -357,6 +361,24 @@ input[type="time"] {
   grid-column: 2 / -1;
   font-size: 12px;
   color: var(--text-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.schedule-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 3px 7px;
+}
+
+.schedule-arrow {
+  opacity: 0.7;
+  font-weight: 700;
 }
 
 .notes-card h2 {

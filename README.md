@@ -19,6 +19,10 @@ This is a **mobile-first web app** for Flamingo Crossings bus planning, designed
   - Transfer details (if needed)
   - Alternative options
   - Live countdown in Leave At mode
+- Route fidelity:
+  - Routes are modeled as **left-to-right multi-stop chains** from each schedule row
+  - Example: Route B rows include FCV East → FCV West → Hollywood Studios → ESPN → Blizzard Beach → Coronado Springs → FCV East
+  - Example: Route E distinguishes Magic Kingdom West Clock and TTC columns
 - Route browser:
   - Pick a specific route (A/B/C/D/E/G/H/I/J/K) and view today's full schedule neatly
 - Quick actions:
@@ -63,6 +67,7 @@ http://localhost:8080
 
 - `index.html` – app structure
 - `styles.css` – modern mobile UI styling
+- `schedule-data.js` – extracted full route-run schedule data
 - `app.js` – schedule data + route planner logic
 - `manifest.webmanifest` – install metadata
 - `service-worker.js` – basic offline caching
