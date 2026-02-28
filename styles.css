@@ -251,6 +251,12 @@ input[type="time"] {
   font-size: 14px;
 }
 
+.trip-grid .value.stops-value {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-soft);
+}
+
 .legs {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   margin-top: 10px;
@@ -277,7 +283,7 @@ input[type="time"] {
   margin: 0;
   padding: 0 0 0 16px;
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .stop-list-item {
@@ -387,12 +393,22 @@ input[type="time"] {
 .schedule-sub {
   display: none;
   margin-top: 6px;
-  padding: 6px 8px;
+  padding: 10px 10px 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .schedule-row.expanded .schedule-sub {
   display: block;
+}
+
+.schedule-stop-list .stop-list-item {
+  grid-template-columns: 68px 1fr;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.schedule-stop-list .stop-list-item:last-child {
+  border-bottom: 0;
 }
 
 .schedule-time {
@@ -409,6 +425,11 @@ input[type="time"] {
 .schedule-chevron {
   opacity: 0.7;
   font-weight: 700;
+  transition: transform 0.18s ease;
+}
+
+.schedule-row.expanded .schedule-chevron {
+  transform: rotate(90deg);
 }
 
 .notes-card h2 {

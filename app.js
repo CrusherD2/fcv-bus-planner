@@ -27,10 +27,10 @@ const STOP_META = {
 
   epcot: { label: "EPCOT", icon: "🌐" },
 
-  animalKingdom: { label: "Animal Kingdom (Park Cast Services)", icon: "🦁" },
-  animalKingdomCostuming: { label: "Animal Kingdom Costuming (Cast Entrance)", icon: "🧵" },
-  animalKingdomLodge: { label: "Animal Kingdom Lodge (Cast Parking)", icon: "🏨" },
-  allStarResortsCastServices: { label: "All-Star Resorts (Cast Services)", icon: "🚌" },
+  animalKingdom: { label: "Animal Kingdom", icon: "🦁" },
+  animalKingdomCostuming: { label: "Animal Kingdom Costuming", icon: "🧵" },
+  animalKingdomLodge: { label: "Animal Kingdom Lodge", icon: "🏨" },
+  allStarResortsCastServices: { label: "All-Star Resorts (Next to DHS Guest Stop)", icon: "🚌" },
   allStarSports: { label: "All-Star Sports", icon: "🏈" },
   allStarMusic: { label: "All-Star Music", icon: "🎵" },
   allStarMovies: { label: "All-Star Movies", icon: "🎞️" },
@@ -445,6 +445,19 @@ function itineraryTimingMessage(itinerary, targetDate, mode) {
   return { text: `Arrives ${diff} min after target`, level: "warning" };
 }
 
+function itineraryStopNames(itinerary) {
+  const names = [];
+  itinerary.legs.forEach((leg, legIndex) => {
+    leg.path.forEach((node, nodeIndex) => {
+      if (legIndex > 0 && nodeIndex === 0) {
+        return;
+      }
+      names.push(stopLabel(node.stopId));
+    });
+  });
+  return names;
+}
+
 function renderStopList(path, listClassName) {
   return `
     <ol class="${listClassName}">
@@ -476,6 +489,7 @@ function renderItineraryCard(itinerary, title, mode, targetDate) {
   const routeCodes = [...new Set(itinerary.legs.map((leg) => leg.routeCode))];
   const badges = routeCodes.map((code) => routeBadge(code)).join("");
   const transferText = itinerary.transferStop ? `Transfer at ${stopLabel(itinerary.transferStop)}` : "No transfer";
+  const stopChain = itineraryStopNames(itinerary).join(" → ");
 
   return `
     <article class="result-card">
@@ -486,6 +500,8 @@ function renderItineraryCard(itinerary, title, mode, targetDate) {
       <div class="trip-grid">
         <div class="label">Depart</div>
         <div class="value">${stopLabel(itinerary.legs[0].from)} · ${formatTime(itinerary.departure)} (${formatDay(itinerary.departure)})</div>
+        <div class="label">Stops</div>
+        <div class="value stops-value">${stopChain}</div>
         <div class="label">Arrive</div>
         <div class="value">${stopLabel(itinerary.legs[itinerary.legs.length - 1].to)} · ${formatTime(itinerary.arrival)} (${formatDay(itinerary.arrival)})</div>
         <div class="label">Trip time</div>
@@ -718,8 +734,8 @@ function renderRouteSchedule() {
       <div class="schedule-row ${expanded ? "expanded" : ""}">
         <button class="schedule-summary" type="button" data-run-key="${runKey}" aria-expanded="${expanded ? "true" : "false"}">
           <span class="schedule-time">${formatClockFromMinutes(first.minutes)} → ${formatClockFromMinutes(last.minutes)}</span>
-          <span class="schedule-main">Trip ${run.tripCode}</span>
-          <span class="schedule-chevron">${expanded ? "▾" : "▸"}</span>
+          <span class="schedule-main">${stopLabel(first.stopId)} → ${stopLabel(last.stopId)} · Trip ${run.tripCode}</span>
+          <span class="schedule-chevron" aria-hidden="true">▸</span>
         </button>
         <div class="schedule-sub">
           ${renderStopList(
